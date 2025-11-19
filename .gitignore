@@ -1,4 +1,3 @@
-results/
-*.svs
-*.png
+results/*
+!results/1/
 *.jsonl
