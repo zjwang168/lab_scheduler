@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, List
+
 from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -8,11 +9,19 @@ from fastapi.responses import FileResponse
 from .models import Job, JobCreate, Workflow, WorkflowCreate
 from .scheduler import Scheduler
 
-
 scheduler = Scheduler()
 
+app = FastAPI(title="InstanSeg Workflow Scheduler", version="0.1.0")
 
-# Dependency: extract user ID from header
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
 async def get_user_id(
     x_user_id: Annotated[str | None, Header(alias="X-User-ID")] = None,
 ) -> str:
@@ -21,62 +30,47 @@ async def get_user_id(
     return x_user_id
 
 
-# -----------------------------------------------------------
-# Create app first
-# -----------------------------------------------------------
-app = FastAPI(title="InstanSeg Workflow Scheduler", version="0.1.0")
-
-# -----------------------------------------------------------
-# Add CORS middleware AFTER app is created
-# -----------------------------------------------------------
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:5173"],    # Your React dev server
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# -----------------------------------------------------------
-# Startup / Shutdown
-# -----------------------------------------------------------
 @app.on_event("startup")
 async def _startup() -> None:
     await scheduler.start()
+
 
 @app.on_event("shutdown")
 async def _shutdown() -> None:
     await scheduler.stop()
 
 
-# -----------------------------------------------------------
-# Workflow endpoints
-# -----------------------------------------------------------
+# ----------------- Workflows -----------------
+
+
 @app.post("/workflows", response_model=Workflow)
 async def create_workflow(
-    payload: WorkflowCreate, user_id: str = Depends(get_user_id)
+    payload: WorkflowCreate,
+    user_id: str = Depends(get_user_id),
 ) -> Workflow:
     return await scheduler.create_workflow(user_id, payload.name)
 
 
-@app.get("/workflows", response_model=list[Workflow])
-async def list_workflows(user_id: str = Depends(get_user_id)) -> list[Workflow]:
+@app.get("/workflows", response_model=List[Workflow])
+async def list_workflows(user_id: str = Depends(get_user_id)) -> List[Workflow]:
     return await scheduler.list_workflows_for_user(user_id)
 
 
-@app.get("/workflows/{workflow_id}/jobs", response_model=list[Job])
+@app.get("/workflows/{workflow_id}/jobs", response_model=List[Job])
 async def list_jobs(
-    workflow_id: str, user_id: str = Depends(get_user_id)
-) -> list[Job]:
+    workflow_id: str,
+    user_id: str = Depends(get_user_id),
+) -> List[Job]:
     return await scheduler.list_jobs_for_workflow(user_id, workflow_id)
 
 
-# -----------------------------------------------------------
-# Job endpoints
-# -----------------------------------------------------------
+# ----------------- Jobs -----------------
+
+
 @app.post("/jobs", response_model=Job)
 async def create_job(
-    payload: JobCreate, user_id: str = Depends(get_user_id)
+    payload: JobCreate,
+    user_id: str = Depends(get_user_id),
 ) -> Job:
     return await scheduler.enqueue_job(user_id, payload)
 
@@ -104,4 +98,4 @@ async def download_result(job_id: str, user_id: str = Depends(get_user_id)):
         raise HTTPException(status_code=404, detail="Job not found")
     if not job.result_path:
         raise HTTPException(status_code=404, detail="Result not ready")
-    return FileResponse(job.result_path, filename=f"{job_id}.json")
+    return FileResponse(job.result_path)

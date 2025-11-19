@@ -1,0 +1,15 @@
+fastapi
+uvicorn[standard]
+pydantic
+numpy
+pillow
+scikit-image
+opencv-python-headless
+imageio
+instanseg-torch
+torch
+openslide-python
+tiffslide
+prometheus-client
+pytest
+pytest-asyncio

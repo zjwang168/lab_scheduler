@@ -1,4 +1,4 @@
-# lab_scheduler
+# InstanSeg Workflow Scheduler
 
 Branch-aware, multi-tenant scheduler for Whole Slide Image (WSI) inference workloads powered by FastAPI, asyncio workers, and InstanSeg.
 

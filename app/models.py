@@ -1,11 +1,15 @@
-# app/models.py
 from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from pydantic import BaseModel, Field
+
+
+class JobType(str, Enum):
+    CELL_SEGMENTATION = "cell_segmentation"
+    TISSUE_MASK = "tissue_mask"
 
 
 class JobState(str, Enum):
@@ -31,35 +35,34 @@ class Workflow(BaseModel):
     workflow_id: str
     user_id: str
     name: str
-    created_at: datetime
     status: WorkflowStatus = WorkflowStatus.PENDING
     progress: float = 0.0
-    # branch_id -> list[job_id] （本 demo 暂时没用到，但可以保留）
-    branches: Dict[str, List[str]] = Field(default_factory=dict)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 class JobCreate(BaseModel):
     workflow_id: str
     branch_id: str
-    job_type: str
+    job_type: JobType
     image_path: str
-    params: Dict[str, str] = Field(default_factory=dict)
+    params: Dict[str, Any] = Field(default_factory=dict)
 
 
 class Job(BaseModel):
     job_id: str
-    user_id: str
     workflow_id: str
+    user_id: str
     branch_id: str
-    job_type: str
+    job_type: JobType
     image_path: str
-    params: Dict[str, str]
+    params: Dict[str, Any] = Field(default_factory=dict)
 
     state: JobState = JobState.PENDING
     progress: float = 0.0
 
-    created_at: datetime
+    created_at: datetime = Field(default_factory=datetime.utcnow)
     started_at: Optional[datetime] = None
-    finished_at: Optional[datetime] = None
-    error: Optional[str] = None
+    completed_at: Optional[datetime] = None
+
     result_path: Optional[str] = None
+    error_message: Optional[str] = None
